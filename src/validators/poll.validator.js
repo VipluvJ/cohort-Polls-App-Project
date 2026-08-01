@@ -10,14 +10,14 @@ const optionSchema = z
   .max(100, "Option cannot exceed 100 characters");
 
 export const createPollSchema = z.object({
-  question: z
+  title: z
     .string({
-      required_error: "Question is required",
-      invalid_type_error: "Question must be a string",
+      required_error: "title is required",
+      invalid_type_error: "title must be a string",
     })
     .trim()
-    .min(5, "Question must be at least 5 characters")
-    .max(200, "Question cannot exceed 200 characters"),
+    .min(5, "title must be at least 5 characters")
+    .max(200, "title cannot exceed 200 characters"),
 
   description: z
     .string({
