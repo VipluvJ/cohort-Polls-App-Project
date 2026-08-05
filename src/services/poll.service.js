@@ -1,5 +1,7 @@
+import { eq } from "drizzle-orm";
 import { db } from "../db/index.js";
 import { polls, options } from "../db/schema/index.js";
+import ApiError from "../utils/ApiError.js";
 
 export const createPoll = async (pollData) => {
   const {
@@ -51,4 +53,15 @@ export const createPoll = async (pollData) => {
 export const getAllPolls = async () => {
   const allPolls = await db.query.polls.findMany({ with: { options: true } });
   return allPolls;
+};
+
+export const getPollById = async (id) => {
+  const poll = await db.query.polls.findFirst({
+    where: eq(polls.id, id),
+    with: { options: true },
+  });
+  if (!poll) {
+    throw ApiError.notFound("poll not found");
+  }
+  return poll;
 };
