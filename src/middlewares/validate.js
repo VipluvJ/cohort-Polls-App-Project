@@ -1,7 +1,7 @@
-export const validate = (schema) => {
+export const validate = (schema, source = "body") => {
   return async (req, res, next) => {
     try {
-      const result = await schema.safeParseAsync(req.body);
+      const result = await schema.safeParseAsync(req[source]);
 
       if (!result.success) {
         const errors = result.error.issues.map((issue) => ({
@@ -16,8 +16,8 @@ export const validate = (schema) => {
         });
       }
 
-      // Replace request body with parsed/sanitized data
-      req.body = result.data;
+      // Replace validated source with parsed/sanitized data
+      req[source] = result.data;
 
       next();
     } catch (err) {

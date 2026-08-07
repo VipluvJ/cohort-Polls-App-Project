@@ -1,5 +1,7 @@
 import { and, eq } from "drizzle-orm";
 import ApiError from "../utils/ApiError.js";
+import { db } from "../db/index.js";
+import { polls, options, votes } from "../db/schema/index.js";
 
 export const createVote = async ({ pollId, optionId, sessionId }) => {
   //find the poll

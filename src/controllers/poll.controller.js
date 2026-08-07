@@ -8,7 +8,7 @@ export const createPollController = async (req, res) => {
 };
 
 export const getAllPollsController = async (req, res) => {
-  const polls = await getAllpolls();
+  const polls = await getAllPolls();
   return ApiResponse.ok(res, "polls fetched successfully", polls);
 };
 
