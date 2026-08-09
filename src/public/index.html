@@ -12,19 +12,23 @@
     <script src="/socket.io/socket.io.js"></script>
 
     <script>
-      console.log("Script Started");
-      console.log(typeof io);
-      const socket = io("http://localhost:3000");
+      const socket = io();
 
       socket.on("connect", () => {
-        console.log("Connected");
-        console.log("Socket ID:", socket.id);
+        console.log("Connected:", socket.id);
 
-        document.body.innerHTML += `<p>Connected : ${socket.id}</p>`;
+        // Join the room
+        socket.emit("join-poll", "6c949490-9871-45db-b2e4-80897da1809f");
       });
 
-      socket.on("disconnect", () => {
-        console.log("Disconnected");
+      socket.on("room-message", (data) => {
+        console.log(data);
+      });
+
+      socket.on("pollUpdated", (results) => {
+        console.log("Updated Results");
+
+        console.table(results.options);
       });
     </script>
   </body>

@@ -1,6 +1,6 @@
 import dotenv from "dotenv";
 import http from "http";
-import { Server } from "socket.io";
+import { initializeSocket } from "./sockets/socket.js";
 
 import app from "./app.js";
 
@@ -12,15 +12,23 @@ const PORT = process.env.PORT || 3000;
 const server = http.createServer(app);
 
 // Attach Socket.IO
-const io = new Server(server, {
-  cors: {
-    origin: "*",
-  },
-});
+const io = initializeSocket(server);
 
 // Listen for socket connections
 io.on("connection", (socket) => {
   console.log(`✅ Client connected: ${socket.id}`);
+
+  socket.on("join-poll", (pollId) => {
+    socket.join(pollId);
+
+    io.to(pollId).emit("user-joined", {
+      message: `${socket.id} joined the room`,
+    });
+
+    console.log(`${socket.id} joined room ${pollId}`);
+
+    console.log(socket.rooms);
+  });
 
   socket.on("disconnect", () => {
     console.log(`❌ Client disconnected: ${socket.id}`);
