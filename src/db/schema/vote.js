@@ -1,23 +1,36 @@
-import { pgTable, uuid, varchar, timestamp } from "drizzle-orm/pg-core";
+import { pgTable, uuid, varchar, timestamp, unique } from "drizzle-orm/pg-core";
 
+import { polls } from "./poll.js";
 import { options } from "./option.js";
 
-export const votes = pgTable("votes", {
-  id: uuid("id").defaultRandom().primaryKey(),
+export const votes = pgTable(
+  "votes",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
 
-  optionId: uuid("option_id")
-    .references(() => options.id, {
-      onDelete: "cascade",
+    pollId: uuid("poll_id")
+      .references(() => polls.id, {
+        onDelete: "cascade",
+      })
+      .notNull(),
+
+    optionId: uuid("option_id")
+      .references(() => options.id, {
+        onDelete: "cascade",
+      })
+      .notNull(),
+
+    sessionId: varchar("session_id", {
+      length: 255,
+    }).notNull(),
+
+    createdAt: timestamp("created_at", {
+      withTimezone: true,
     })
-    .notNull(),
-
-  sessionId: varchar("session_id", {
-    length: 255,
-  }).notNull(),
-
-  createdAt: timestamp("created_at", {
-    withTimezone: true,
-  })
-    .defaultNow()
-    .notNull(),
-});
+      .defaultNow()
+      .notNull(),
+  },
+  (table) => ({
+    uniqueVote: unique().on(table.pollId, table.sessionId),
+  }),
+);

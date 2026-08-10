@@ -31,27 +31,34 @@ export const createVote = async ({ pollId, optionId, sessionId }) => {
   }
 
   // 5. Check whether this session already voted on this poll
-  const existingVote = await db
-    .select({
-      id: votes.id,
-    })
-    .from(votes)
-    .innerJoin(options, eq(votes.optionId, options.id))
-    .where(and(eq(options.pollId, pollId), eq(votes.sessionId, sessionId)))
-    .limit(1);
+  //   const existingVote = await db
+  //     .select({
+  //       id: votes.id,
+  //     })
+  //     .from(votes)
+  //     .innerJoin(options, eq(votes.optionId, options.id))
+  //     .where(and(eq(options.pollId, pollId), eq(votes.sessionId, sessionId)))
+  //     .limit(1);
 
-  if (existingVote.length > 0) {
-    throw ApiError.conflict("You have already voted on this poll");
-  }
+  //   if (existingVote.length > 0) {
+  //     throw ApiError.conflict("You have already voted on this poll");
+  //   }
 
   // 6. Create vote
-  const [createdVote] = await db
-    .insert(votes)
-    .values({
-      optionId,
-      sessionId,
-    })
-    .returning();
+  try {
+    const [createdVote] = await db
+      .insert(votes)
+      .values({
+        pollId,
+        optionId,
+        sessionId,
+      })
+      .returning();
 
-  return createdVote;
+    return createdVote;
+  } catch (error) {
+    if (error.code === "23505") {
+      throw ApiError.conflict("You have already voted on this poll");
+    }
+  }
 };

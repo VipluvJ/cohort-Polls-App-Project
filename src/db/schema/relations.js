@@ -7,6 +7,7 @@ import { votes } from "./vote.js";
 // One poll has many options
 export const pollsRelations = relations(polls, ({ many }) => ({
   options: many(options),
+  votes: many(votes),
 }));
 
 // One option belongs to one poll
@@ -25,5 +26,9 @@ export const votesRelations = relations(votes, ({ one }) => ({
   option: one(options, {
     fields: [votes.optionId],
     references: [options.id],
+  }),
+  poll: one(polls, {
+    fields: [votes.pollId],
+    references: [polls.id],
   }),
 }));

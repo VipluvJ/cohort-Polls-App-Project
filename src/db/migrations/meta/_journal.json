@@ -8,6 +8,13 @@
       "when": 1785369389558,
       "tag": "0000_happy_deathbird",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1786299397942,
+      "tag": "0001_lovely_guardian",
+      "breakpoints": true
     }
   ]
 }
