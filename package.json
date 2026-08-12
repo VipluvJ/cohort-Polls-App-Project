@@ -5,15 +5,22 @@
     "start": "node src/server.js"
   },
   "dependencies": {
+    "@tailwindcss/vite": "^4.3.3",
+    "axios": "^1.19.0",
     "cookie-parser": "^1.4.7",
     "cors": "^2.8.6",
     "dotenv": "^17.4.2",
     "drizzle-orm": "^0.45.2",
     "express": "^5.2.1",
+    "framer-motion": "^13.1.0",
     "init": "^0.1.2",
+    "lucide-react": "^1.31.0",
     "nodemon": "^3.1.14",
     "pg": "^8.22.0",
+    "react-router-dom": "^7.18.2",
     "socket.io": "^4.8.3",
+    "socket.io-client": "^4.8.3",
+    "tailwindcss": "^4.3.3",
     "zod": "^4.4.3"
   },
   "devDependencies": {
