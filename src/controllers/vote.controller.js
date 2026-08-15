@@ -7,14 +7,25 @@ export const createVoteController = async (req, res) => {
   const { pollId } = req.params;
   const { optionId } = req.body;
 
+  console.log("CONTROLLER VALUES:", {
+    pollId,
+    optionId,
+    sessionId: req.sessionId,
+  });
+
   // Temporary until we implement proper anonymous sessions/auth
   //   const sessionId = req.headers["x-session-id"];
-  const sessionId = req.poll_session;
-  console.log("params:", req.params);
-  console.log("body:", req.body);
-  console.log("session:", req.headers["x-session-id"]);
-  console.log("headers", req.headers);
+  const sessionId = req.sessionId;
+  // console.log("params:", req.params);
+  // console.log("body:", req.body);
+  // console.log("session:", req.headers["x-session-id"]);
+  // console.log("headers", req.headers);
   const vote = await createVote({
+    pollId,
+    optionId,
+    sessionId,
+  });
+  console.log("SERVICE VALUES:", {
     pollId,
     optionId,
     sessionId,

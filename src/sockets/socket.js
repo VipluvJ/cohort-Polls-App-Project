@@ -5,7 +5,8 @@ let io;
 export const initializeSocket = (server) => {
   io = new Server(server, {
     cors: {
-      origin: "*",
+      origin: "http://localhost:5173",
+      credentials: true,
     },
   });
 

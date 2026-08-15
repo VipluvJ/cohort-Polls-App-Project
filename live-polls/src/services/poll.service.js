@@ -1,10 +1,37 @@
-import axios from "axios";
+import api from "./axios";
 
-const api = axios.create({
-  baseURL: import.meta.env.VITE_API_URL,
-  headers: {
-    "Content-Type": "application/json",
-  },
-});
+// Create a new poll
+export const createPoll = async (pollData) => {
+  const response = await api.post("/", pollData);
 
-export default api;
+  return response.data;
+};
+
+// Get a single poll
+export const getPoll = async (pollId) => {
+  const response = await api.get(`/${pollId}`);
+
+  return response.data;
+};
+
+// Get all polls
+export const getPolls = async () => {
+  const response = await api.get("/");
+
+  return response.data;
+};
+
+// Vote on a poll
+export const voteOnPoll = async (pollId, optionId) => {
+  const response = await api.post(`/${pollId}/votes`, {
+    optionId,
+  });
+
+  return response.data;
+};
+
+export const getPollResults = async (pollId) => {
+  const response = await api.get(`/${pollId}/results`);
+
+  return response.data;
+};

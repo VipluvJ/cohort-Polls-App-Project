@@ -22,7 +22,7 @@ export const createPoll = async (pollData) => {
         description,
         isPublic,
         allowAnonymous,
-        expiresAt,
+        expiresAt: expiresAt ? new Date(expiresAt) : null,
       })
       .returning();
 

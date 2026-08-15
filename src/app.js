@@ -7,16 +7,18 @@ import resultRoutes from "./routes/result.routes.js";
 import path from "path";
 import { fileURLToPath } from "url";
 import cookieParser from "cookie-parser";
-import { anonymousSession } from "./middlewares/session.js";
 
 const app = express();
 
-app.use(cors());
+app.use(
+  cors({
+    origin: "http://localhost:5173",
+    credentials: true,
+  }),
+);
 app.use(express.json());
 app.use(express.urlencoded({ extended: true, limit: "50kb" }));
 app.use(cookieParser());
-
-app.use(anonymousSession);
 
 // Resolve current directory (ES Modules)
 const __filename = fileURLToPath(import.meta.url);

@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Plus, Trash2, Clock, CheckCircle2, Sparkles } from "lucide-react";
 
-import api from "../services/poll.service";
+import { createPoll } from "../services/poll.service";
 
 export default function CreatePoll() {
   const [title, setTitle] = useState("");
@@ -50,7 +50,6 @@ export default function CreatePoll() {
 
     setError("");
 
-    // Basic validation
     if (!title.trim()) {
       setError("Please enter a poll title.");
       return;
@@ -72,38 +71,25 @@ export default function CreatePoll() {
 
     const payload = {
       title: title.trim(),
-
-      description: description.trim(),
-
+      description: description.trim() || undefined,
+      options: cleanedOptions,
       isPublic,
-
       allowAnonymous,
-
-      expiresAt: expiresAt || null,
+      expiresAt: expiresAt ? new Date(expiresAt).toISOString() : null,
     };
+
+    console.log("Sending payload:", payload);
 
     try {
       setLoading(true);
 
-      console.log("Creating poll:");
-      console.log(payload);
+      const response = await createPoll(payload);
 
-      const response = await api(payload);
-
-      console.log("Poll created successfully:");
-      console.log(response);
-
-      /*
-       * We will handle the options after
-       * confirming how your backend creates them.
-       */
+      console.log("Poll created:", response);
     } catch (error) {
       console.error("Create poll failed:", error);
 
-      setError(
-        error.response?.data?.message ||
-          "Failed to create poll. Please try again.",
-      );
+      setError(error.response?.data?.message || "Failed to create poll.");
     } finally {
       setLoading(false);
     }

@@ -4,12 +4,15 @@ import { db } from "../db/index.js";
 import { polls, options, votes } from "../db/schema/index.js";
 
 export const createVote = async ({ pollId, optionId, sessionId }) => {
-  //find the poll
-  const poll = await db.query.polls.findFirst({ where: eq(polls.id, pollId) });
+  // 1. Find the poll
+  const poll = await db.query.polls.findFirst({
+    where: eq(polls.id, pollId),
+  });
 
   if (!poll) {
-    throw ApiError.notFound("poll not found");
+    throw ApiError.notFound("Poll not found");
   }
+
   // 2. Check whether poll is active
   if (!poll.isActive) {
     throw ApiError.badRequest("Poll is no longer active");
@@ -20,31 +23,16 @@ export const createVote = async ({ pollId, optionId, sessionId }) => {
     throw ApiError.badRequest("Poll has expired");
   }
 
-  // 4. Find the selected option
+  // 4. Check whether selected option belongs to this poll
   const selectedOption = await db.query.options.findFirst({
     where: and(eq(options.id, optionId), eq(options.pollId, pollId)),
   });
 
-  // This also prevents using an option from another poll
   if (!selectedOption) {
     throw ApiError.badRequest("Selected option does not belong to this poll");
   }
 
-  // 5. Check whether this session already voted on this poll
-  //   const existingVote = await db
-  //     .select({
-  //       id: votes.id,
-  //     })
-  //     .from(votes)
-  //     .innerJoin(options, eq(votes.optionId, options.id))
-  //     .where(and(eq(options.pollId, pollId), eq(votes.sessionId, sessionId)))
-  //     .limit(1);
-
-  //   if (existingVote.length > 0) {
-  //     throw ApiError.conflict("You have already voted on this poll");
-  //   }
-
-  // 6. Create vote
+  // 5. Create vote
   try {
     const [createdVote] = await db
       .insert(votes)
@@ -57,8 +45,18 @@ export const createVote = async ({ pollId, optionId, sessionId }) => {
 
     return createdVote;
   } catch (error) {
-    if (error.code === "23505") {
+    console.error("VOTE INSERT ERROR:", error);
+
+    const postgresError = error.cause;
+
+    console.log("POSTGRES ERROR CODE:", postgresError?.code);
+
+    console.log("POSTGRES ERROR MESSAGE:", postgresError?.message);
+
+    if (postgresError?.code === "23505") {
       throw ApiError.conflict("You have already voted on this poll");
     }
+
+    throw error;
   }
 };
