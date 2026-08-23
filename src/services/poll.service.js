@@ -1,4 +1,4 @@
-import { eq } from "drizzle-orm";
+import { and, eq, or, gt, isNull, desc } from "drizzle-orm";
 import { db } from "../db/index.js";
 import { polls, options } from "../db/schema/index.js";
 import ApiError from "../utils/ApiError.js";
@@ -11,6 +11,7 @@ export const createPoll = async (pollData) => {
     isPublic,
     allowAnonymous,
     expiresAt,
+    userId,
   } = pollData;
 
   const result = await db.transaction(async (tx) => {
@@ -23,6 +24,7 @@ export const createPoll = async (pollData) => {
         isPublic,
         allowAnonymous,
         expiresAt: expiresAt ? new Date(expiresAt) : null,
+        userId,
       })
       .returning();
 
@@ -64,4 +66,27 @@ export const getPollById = async (id) => {
     throw ApiError.notFound("poll not found");
   }
   return poll;
+};
+
+export const getActivePolls = async () => {
+  const activePolls = await db
+    .select({
+      id: polls.id,
+      title: polls.title,
+      description: polls.description,
+      isActive: polls.isActive,
+      expiresAt: polls.expiresAt,
+      createdAt: polls.createdAt,
+    })
+    .from(polls)
+    .where(
+      and(
+        eq(polls.isPublic, true),
+        eq(polls.isActive, true),
+        or(isNull(polls.expiresAt), gt(polls.expiresAt, new Date())),
+      ),
+    )
+    .orderBy(desc(polls.createdAt));
+
+  return activePolls;
 };

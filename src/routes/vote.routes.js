@@ -11,6 +11,14 @@ const router = Router();
 
 router.post(
   "/:pollId/votes",
+
+  (req, res, next) => {
+    console.log("=== BEFORE VOTE VALIDATION ===");
+    console.log("URL:", req.originalUrl);
+    console.log("PARAMS:", req.params);
+    console.log("BODY:", req.body);
+    next();
+  },
   anonymousSession,
   validate(pollIdSchema, "params"),
   validate(voteSchema, "body"),

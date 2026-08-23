@@ -35,3 +35,15 @@ export const getPollResults = async (pollId) => {
 
   return response.data;
 };
+
+export const getDashboard = async () => {
+  const response = await api.get("/dashboard");
+
+  return response.data;
+};
+
+export const getActivePolls = async () => {
+  const response = await api.get("/active-polls");
+
+  return response.data;
+};
