@@ -5,7 +5,7 @@ import { useAuth } from "../context/AuthContext";
 import { getDashboard } from "../services/poll.service.js";
 
 const Dashboard = () => {
-  const { user, logout } = useAuth();
+  const { user } = useAuth();
   const navigate = useNavigate();
 
   const [dashboard, setDashboard] = useState(null);
@@ -34,15 +34,6 @@ const Dashboard = () => {
     fetchDashboard();
   }, []);
 
-  const handleLogout = async () => {
-    try {
-      await logout();
-      navigate("/login");
-    } catch (error) {
-      console.error("Logout failed:", error);
-    }
-  };
-
   if (loading) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-zinc-950 text-white">
@@ -63,29 +54,6 @@ const Dashboard = () => {
 
   return (
     <div className="min-h-screen bg-zinc-950 text-white">
-      <header className="border-b border-zinc-800">
-        <div className="mx-auto flex max-w-6xl items-center justify-between px-6 py-4">
-          <div>
-            <h1 className="text-xl font-bold">Poll Dashboard</h1>
-
-            <p className="text-sm text-zinc-500">Manage your polls</p>
-          </div>
-
-          <div className="flex items-center gap-4">
-            <span className="hidden text-sm text-zinc-400 sm:block">
-              {user?.name || user?.email}
-            </span>
-
-            <button
-              onClick={handleLogout}
-              className="rounded-lg border border-zinc-700 px-4 py-2 text-sm transition hover:bg-zinc-800"
-            >
-              Logout
-            </button>
-          </div>
-        </div>
-      </header>
-
       <main className="mx-auto max-w-6xl px-6 py-10">
         <section>
           <p className="text-sm text-zinc-500">Welcome back</p>
