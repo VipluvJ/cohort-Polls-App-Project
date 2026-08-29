@@ -13,7 +13,7 @@ const AUTH_COOKIE = "authSession";
 const cookieOptions = {
   httpOnly: true,
   secure: process.env.NODE_ENV === "production",
-  sameSite: "lax",
+  sameSite: process.env.NODE_ENV === "production" ? "none" : "lax",
   maxAge: 1000 * 60 * 60 * 24 * 7,
 };
 
@@ -64,7 +64,7 @@ export const logoutController = async (req, res) => {
   res.clearCookie(AUTH_COOKIE, {
     httpOnly: true,
     secure: process.env.NODE_ENV === "production",
-    sameSite: "lax",
+    sameSite: process.env.NODE_ENV === "production" ? "none" : "lax",
   });
 
   return ApiResponse.ok(res, "Logged out successfully");
