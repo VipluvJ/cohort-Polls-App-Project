@@ -6,8 +6,8 @@ export const anonymousSession = (req, res, next) => {
 
     res.cookie("sessionId", sessionId, {
       httpOnly: true,
-      sameSite: "lax",
       secure: process.env.NODE_ENV === "production",
+      sameSite: process.env.NODE_ENV === "production" ? "none" : "lax",
       maxAge: 1000 * 60 * 60 * 24 * 365,
     });
 
