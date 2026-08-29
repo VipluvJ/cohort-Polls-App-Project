@@ -1,0 +1,6 @@
+node_modules;
+npm - debug.log.env.git.gitignore;
+Dockerfile.dockerignore;
+
+live - polls / node_modules;
+live - polls / dist;
