@@ -15,7 +15,7 @@ services:
       context: ./live-polls
       dockerfile: Dockerfile
       args:
-        VITE_API_URL: http://localhost:3000/api/polls
+        VITE_API_URL: ${VITE_API_URL}
     container_name: polling-frontend
     ports:
       - "5173:80"

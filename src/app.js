@@ -14,7 +14,7 @@ const app = express();
 
 app.use(
   cors({
-    origin: "http://localhost:5173",
+    origin: process.env.CLIENT_URL,
     credentials: true,
   }),
 );
@@ -33,6 +33,12 @@ app.use("/api/polls", dashboardRoutes);
 app.use("/api/polls", pollRoutes);
 app.use("/api/polls", voteRoutes);
 app.use("/api/polls", resultRoutes);
+app.get("/health", (req, res) => {
+  res.status(200).json({
+    success: true,
+    message: "Polls API is healthy",
+  });
+});
 
 app.use(errorHandler);
 
