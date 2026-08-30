@@ -1,7 +1,8 @@
 import { io } from "socket.io-client";
 
-const SOCKET_URL = "http://localhost:3000";
+const API_URL = import.meta.env.VITE_API_URL;
 
+const SOCKET_URL = API_URL.replace(/\/api\/polls\/?$/, "");
 export const socket = io(SOCKET_URL, {
   withCredentials: true,
   autoConnect: false,
