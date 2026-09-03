@@ -3,11 +3,15 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
+
     container_name: polling-backend
+
     env_file:
       - .env
+
     ports:
       - "3000:3000"
+
     restart: unless-stopped
 
   frontend:
@@ -15,10 +19,14 @@ services:
       context: ./live-polls
       dockerfile: Dockerfile
       args:
-        VITE_API_URL: ${VITE_API_URL}
+        VITE_API_URL: http://localhost:3000/api/polls
+
     container_name: polling-frontend
+
     ports:
       - "5173:80"
+
     depends_on:
       - backend
+
     restart: unless-stopped

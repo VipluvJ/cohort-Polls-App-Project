@@ -1,30 +1,24 @@
 import { useState } from "react";
-import { Plus, Trash2, Clock, CheckCircle2, Sparkles } from "lucide-react";
-
+import { useNavigate } from "react-router-dom";
+import { motion } from "framer-motion";
+import { ArrowRight, Plus, Trash2 } from "lucide-react";
 import { createPoll } from "../services/poll.service";
 
-export default function CreatePoll() {
+const CreatePoll = () => {
+  const navigate = useNavigate();
+
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
-
   const [options, setOptions] = useState(["", ""]);
-
   const [isPublic, setIsPublic] = useState(true);
   const [allowAnonymous, setAllowAnonymous] = useState(true);
   const [expiresAt, setExpiresAt] = useState("");
-
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
-  // -----------------------------
-  // Options
-  // -----------------------------
-
-  const updateOption = (index, value) => {
+  const handleOptionChange = (index, value) => {
     const updatedOptions = [...options];
-
     updatedOptions[index] = value;
-
     setOptions(updatedOptions);
   };
 
@@ -33,318 +27,327 @@ export default function CreatePoll() {
   };
 
   const removeOption = (index) => {
-    // Keep at least 2 options
-    if (options.length <= 2) {
-      return;
-    }
+    if (options.length <= 2) return;
 
     setOptions(options.filter((_, optionIndex) => optionIndex !== index));
   };
 
-  // -----------------------------
-  // Submit
-  // -----------------------------
-
-  const handleSubmit = async (e) => {
-    e.preventDefault();
+  const handleSubmit = async (event) => {
+    event.preventDefault();
 
     setError("");
 
-    if (!title.trim()) {
-      setError("Please enter a poll title.");
-      return;
-    }
-
-    if (!description.trim()) {
-      setError("Please enter a poll description.");
-      return;
-    }
-
     const cleanedOptions = options
       .map((option) => option.trim())
-      .filter((option) => option !== "");
+      .filter(Boolean);
 
-    if (cleanedOptions.length < 2) {
-      setError("A poll must have at least 2 options.");
+    if (!title.trim()) {
+      setError("Please enter a poll question.");
       return;
     }
 
-    const payload = {
-      title: title.trim(),
-      description: description.trim() || undefined,
-      options: cleanedOptions,
-      isPublic,
-      allowAnonymous,
-      expiresAt: expiresAt ? new Date(expiresAt).toISOString() : null,
-    };
+    if (cleanedOptions.length < 2) {
+      setError("A poll must have at least two options.");
+      return;
+    }
 
-    console.log("Sending payload:", payload);
+    setLoading(true);
 
     try {
-      setLoading(true);
+      const payload = {
+        title: title.trim(),
+        description: description.trim() || undefined,
+        options: cleanedOptions,
+        isPublic,
+        allowAnonymous,
+        expiresAt: expiresAt ? new Date(expiresAt).toISOString() : null,
+      };
 
       const response = await createPoll(payload);
 
-      console.log("Poll created:", response);
-    } catch (error) {
-      console.error("Create poll failed:", error);
+      const poll = response?.data ?? response;
 
-      setError(error.response?.data?.message || "Failed to create poll.");
+      if (poll?.id) {
+        navigate(`/${poll.id}`);
+      } else {
+        navigate("/dashboard");
+      }
+    } catch (error) {
+      console.error("Failed to create poll:", error);
+
+      setError(
+        error?.response?.data?.message ||
+          error?.message ||
+          "Failed to create poll. Please try again.",
+      );
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <div className="min-h-screen bg-slate-950 px-6 py-12 text-white">
-      <div className="mx-auto max-w-3xl">
-        {/* -------------------------------- */}
+    <main className="min-h-[calc(100vh-73px)] bg-[#f7f3eb] px-5 py-12 text-[#171717] sm:px-8 sm:py-16">
+      <motion.div
+        initial={{ opacity: 0, y: 12 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.35 }}
+        className="mx-auto max-w-3xl"
+      >
         {/* Header */}
-        {/* -------------------------------- */}
+        <div className="mb-12">
+          <p className="mb-3 text-xs font-medium uppercase tracking-[0.2em] text-[#8a8175]">
+            New poll
+          </p>
 
-        <div className="mb-10">
-          <div className="inline-flex items-center gap-2 rounded-full bg-violet-600/20 px-4 py-1 text-sm text-violet-300">
-            <Sparkles size={16} />
-            Create a New Poll
-          </div>
-
-          <h1 className="mt-4 text-4xl font-bold tracking-tight sm:text-5xl">
-            Create your poll
+          <h1 className="font-serif text-4xl tracking-tight sm:text-5xl">
+            Create a poll
           </h1>
 
-          <p className="mt-3 text-slate-400">
-            Ask a question, add your options, and share it with others.
+          <p className="mt-4 max-w-xl text-sm leading-6 text-[#756f66] sm:text-base">
+            Ask a question and let people decide.
           </p>
         </div>
 
-        <form onSubmit={handleSubmit} className="space-y-8">
-          {/* -------------------------------- */}
-          {/* Poll Information */}
-          {/* -------------------------------- */}
+        <form onSubmit={handleSubmit}>
+          {/* Question */}
+          <section className="mb-12">
+            <label
+              htmlFor="title"
+              className="mb-4 block text-xs font-semibold uppercase tracking-[0.16em] text-[#8a8175]"
+            >
+              Question
+            </label>
 
-          <div className="rounded-3xl border border-slate-800 bg-slate-900 p-8">
-            <h2 className="text-lg font-semibold">Poll Information</h2>
+            <input
+              id="title"
+              type="text"
+              value={title}
+              onChange={(event) => setTitle(event.target.value)}
+              placeholder="What's the best JavaScript framework?"
+              className="w-full border-0 border-b border-[#d7d0c5] bg-transparent px-0 pb-4 text-xl outline-none transition-colors placeholder:text-[#aaa298] focus:border-[#171717] sm:text-2xl"
+              maxLength={200}
+            />
+          </section>
 
-            {/* Title */}
+          {/* Description */}
+          <section className="mb-12">
+            <label
+              htmlFor="description"
+              className="mb-4 block text-xs font-semibold uppercase tracking-[0.16em] text-[#8a8175]"
+            >
+              Description
+            </label>
 
-            <div className="mt-6">
-              <label
-                htmlFor="title"
-                className="text-sm font-medium text-slate-300"
-              >
-                Poll Title
-              </label>
+            <textarea
+              id="description"
+              value={description}
+              onChange={(event) => setDescription(event.target.value)}
+              placeholder="Optional context for your poll..."
+              rows={3}
+              className="w-full resize-none border-0 border-b border-[#d7d0c5] bg-transparent px-0 pb-4 text-base leading-7 outline-none transition-colors placeholder:text-[#aaa298] focus:border-[#171717]"
+              maxLength={500}
+            />
+          </section>
 
-              <input
-                id="title"
-                type="text"
-                value={title}
-                maxLength={150}
-                onChange={(e) => setTitle(e.target.value)}
-                placeholder="What's your favorite programming language?"
-                className="mt-2 w-full rounded-xl border border-slate-700 bg-slate-950 px-4 py-3 text-white outline-none transition placeholder:text-slate-600 focus:border-violet-500"
-              />
-
-              <div className="mt-2 text-right text-xs text-slate-500">
-                {title.length}/150
-              </div>
-            </div>
-
-            {/* Description */}
-
-            <div className="mt-5">
-              <label
-                htmlFor="description"
-                className="text-sm font-medium text-slate-300"
-              >
-                Description
-              </label>
-
-              <textarea
-                id="description"
-                rows={4}
-                maxLength={500}
-                value={description}
-                onChange={(e) => setDescription(e.target.value)}
-                placeholder="Add some context about your poll..."
-                className="mt-2 w-full resize-none rounded-xl border border-slate-700 bg-slate-950 px-4 py-3 text-white outline-none transition placeholder:text-slate-600 focus:border-violet-500"
-              />
-
-              <div className="mt-2 text-right text-xs text-slate-500">
-                {description.length}/500
-              </div>
-            </div>
-          </div>
-
-          {/* -------------------------------- */}
           {/* Options */}
-          {/* -------------------------------- */}
+          <section className="mb-12">
+            <div className="mb-5 flex items-end justify-between">
+              <label className="block text-xs font-semibold uppercase tracking-[0.16em] text-[#8a8175]">
+                Options
+              </label>
 
-          <div className="rounded-3xl border border-slate-800 bg-slate-900 p-8">
-            <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-              <div>
-                <h2 className="text-lg font-semibold">Poll Options</h2>
-
-                <p className="mt-1 text-sm text-slate-500">
-                  Add at least two options.
-                </p>
-              </div>
-
-              <button
-                type="button"
-                onClick={addOption}
-                className="inline-flex items-center justify-center gap-2 rounded-xl bg-violet-600 px-4 py-2.5 text-sm font-medium transition hover:bg-violet-500 active:scale-[0.98]"
-              >
-                <Plus size={18} />
-                Add Option
-              </button>
+              <span className="text-xs text-[#aaa298]">
+                {options.length} options
+              </span>
             </div>
 
-            <div className="mt-6 space-y-4">
+            <div className="border-t border-[#d7d0c5]">
               {options.map((option, index) => (
-                <div key={index} className="flex items-center gap-3">
-                  {/* Number */}
-
-                  <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-slate-800 text-sm font-semibold text-slate-400">
-                    {index + 1}
-                  </div>
-
-                  {/* Input */}
+                <motion.div
+                  key={index}
+                  layout
+                  initial={{ opacity: 0, y: 6 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  className="group flex items-center border-b border-[#d7d0c5]"
+                >
+                  <span className="w-10 shrink-0 py-4 font-mono text-xs text-[#aaa298]">
+                    {String(index + 1).padStart(2, "0")}
+                  </span>
 
                   <input
                     type="text"
                     value={option}
-                    maxLength={100}
-                    onChange={(e) => updateOption(index, e.target.value)}
-                    placeholder={`Option ${index + 1}`}
-                    className="min-w-0 flex-1 rounded-xl border border-slate-700 bg-slate-950 px-4 py-3 text-white outline-none transition placeholder:text-slate-600 focus:border-violet-500"
+                    onChange={(event) =>
+                      handleOptionChange(index, event.target.value)
+                    }
+                    placeholder={
+                      index === 0
+                        ? "First option"
+                        : index === 1
+                          ? "Second option"
+                          : "Another option"
+                    }
+                    className="min-w-0 flex-1 border-0 bg-transparent py-4 text-base outline-none placeholder:text-[#aaa298]"
+                    maxLength={150}
                   />
 
-                  {/* Delete */}
-
-                  <button
-                    type="button"
-                    onClick={() => removeOption(index)}
-                    disabled={options.length <= 2}
-                    className="rounded-xl border border-red-500/20 p-3 text-red-400 transition hover:bg-red-500/10 disabled:cursor-not-allowed disabled:opacity-20"
-                    aria-label={`Remove option ${index + 1}`}
-                  >
-                    <Trash2 size={18} />
-                  </button>
-                </div>
+                  {options.length > 2 && (
+                    <button
+                      type="button"
+                      onClick={() => removeOption(index)}
+                      className="mr-1 rounded p-2 text-[#aaa298] opacity-0 transition-all hover:bg-[#ebe5db] hover:text-[#171717] group-hover:opacity-100"
+                      aria-label={`Remove option ${index + 1}`}
+                    >
+                      <Trash2 size={15} strokeWidth={1.7} />
+                    </button>
+                  )}
+                </motion.div>
               ))}
             </div>
-          </div>
 
-          {/* -------------------------------- */}
-          {/* Visibility */}
-          {/* -------------------------------- */}
+            <button
+              type="button"
+              onClick={addOption}
+              className="mt-5 inline-flex items-center gap-2 text-sm font-medium text-[#5f584f] transition-colors hover:text-[#171717]"
+            >
+              <Plus size={16} strokeWidth={1.8} />
+              Add another option
+            </button>
+          </section>
 
-          <div className="rounded-3xl border border-slate-800 bg-slate-900 p-8">
-            <h2 className="text-lg font-semibold">Poll Visibility</h2>
+          {/* Settings */}
+          <section className="mb-12">
+            <p className="mb-5 text-xs font-semibold uppercase tracking-[0.16em] text-[#8a8175]">
+              Settings
+            </p>
 
-            <div className="mt-6 space-y-4">
+            <div className="border-y border-[#d7d0c5]">
               {/* Public */}
-
-              <label className="flex cursor-pointer items-start gap-4 rounded-xl border border-slate-800 bg-slate-950 p-4 transition hover:border-slate-700">
-                <input
-                  type="checkbox"
-                  checked={isPublic}
-                  onChange={(e) => setIsPublic(e.target.checked)}
-                  className="mt-1 h-4 w-4 accent-violet-600"
-                />
-
+              {/* Public */}
+              <label className="flex cursor-pointer items-center justify-between gap-6 border-b border-[#d7d0c5] py-5">
                 <div>
-                  <p className="font-medium">Public poll</p>
-
-                  <p className="mt-1 text-sm text-slate-500">
-                    Anyone with access can view this poll.
+                  <p className="text-sm font-medium">Public poll</p>
+                  <p className="mt-1 text-xs leading-5 text-[#8a8175]">
+                    Anyone can discover and vote on this poll.
                   </p>
                 </div>
+
+                <button
+                  type="button"
+                  role="switch"
+                  aria-checked={isPublic}
+                  onClick={() => setIsPublic((prev) => !prev)}
+                  className={`relative h-5 w-9 shrink-0 rounded-full transition-colors duration-200 ${
+                    isPublic ? "bg-[#171717]" : "bg-[#d2cbc0]"
+                  }`}
+                >
+                  <span
+                    className={`absolute left-0.5 top-0.5 h-4 w-4 rounded-full bg-white shadow-sm transition-transform duration-200 ${
+                      isPublic ? "translate-x-4" : "translate-x-0"
+                    }`}
+                  />
+                </button>
               </label>
 
               {/* Anonymous */}
-
-              <label className="flex cursor-pointer items-start gap-4 rounded-xl border border-slate-800 bg-slate-950 p-4 transition hover:border-slate-700">
-                <input
-                  type="checkbox"
-                  checked={allowAnonymous}
-                  onChange={(e) => setAllowAnonymous(e.target.checked)}
-                  className="mt-1 h-4 w-4 accent-violet-600"
-                />
-
+              <label className="flex cursor-pointer items-center justify-between gap-6 py-5">
                 <div>
-                  <p className="font-medium">Allow anonymous voting</p>
-
-                  <p className="mt-1 text-sm text-slate-500">
-                    People can vote without creating an account.
+                  <p className="text-sm font-medium">Anonymous voting</p>
+                  <p className="mt-1 text-xs leading-5 text-[#8a8175]">
+                    Voters can participate without signing in.
                   </p>
                 </div>
+
+                <button
+                  type="button"
+                  role="switch"
+                  aria-checked={allowAnonymous}
+                  onClick={() => setAllowAnonymous((prev) => !prev)}
+                  className={`relative h-5 w-9 shrink-0 rounded-full transition-colors duration-200 ${
+                    allowAnonymous ? "bg-[#171717]" : "bg-[#d2cbc0]"
+                  }`}
+                >
+                  <span
+                    className={`absolute left-0.5 top-0.5 h-4 w-4 rounded-full bg-white shadow-sm transition-transform duration-200 ${
+                      allowAnonymous ? "translate-x-4" : "translate-x-0"
+                    }`}
+                  />
+                </button>
               </label>
             </div>
-          </div>
+          </section>
 
-          {/* -------------------------------- */}
           {/* Expiration */}
-          {/* -------------------------------- */}
+          <section className="mb-12">
+            <label
+              htmlFor="expiresAt"
+              className="mb-4 block text-xs font-semibold uppercase tracking-[0.16em] text-[#8a8175]"
+            >
+              Expiration
+            </label>
 
-          <div className="rounded-3xl border border-slate-800 bg-slate-900 p-8">
-            <h2 className="flex items-center gap-2 text-lg font-semibold">
-              <Clock size={20} />
-              Poll Expiration
-            </h2>
-
-            <p className="mt-1 text-sm text-slate-500">
-              Choose when this poll should stop accepting votes.
-            </p>
-
-            <div className="mt-6">
-              <label
-                htmlFor="expiresAt"
-                className="text-sm font-medium text-slate-300"
-              >
-                Expiration Date & Time
-              </label>
-
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
               <input
                 id="expiresAt"
                 type="datetime-local"
                 value={expiresAt}
-                onChange={(e) => setExpiresAt(e.target.value)}
-                className="mt-2 w-full rounded-xl border border-slate-700 bg-slate-950 px-4 py-3 text-white outline-none transition focus:border-violet-500"
+                onChange={(event) => setExpiresAt(event.target.value)}
+                className="border-b border-[#d7d0c5] bg-transparent px-0 py-3 text-sm outline-none transition-colors focus:border-[#171717]"
               />
 
-              <p className="mt-2 text-xs text-slate-500">
-                Leave empty if the poll should never expire.
-              </p>
+              {expiresAt && (
+                <button
+                  type="button"
+                  onClick={() => setExpiresAt("")}
+                  className="self-start text-xs text-[#8a8175] underline underline-offset-4 hover:text-[#171717]"
+                >
+                  Clear
+                </button>
+              )}
             </div>
-          </div>
+          </section>
 
-          {/* -------------------------------- */}
           {/* Error */}
-          {/* -------------------------------- */}
-
           {error && (
-            <div className="rounded-xl border border-red-500/20 bg-red-500/10 px-4 py-3 text-sm text-red-400">
+            <motion.div
+              initial={{ opacity: 0, y: -5 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="mb-8 border-l-2 border-red-700 bg-[#eee7dd] px-4 py-3 text-sm text-red-800"
+            >
               {error}
-            </div>
+            </motion.div>
           )}
 
-          {/* -------------------------------- */}
           {/* Submit */}
-          {/* -------------------------------- */}
+          <div className="flex items-center justify-between border-t border-[#d7d0c5] pt-6">
+            <button
+              type="button"
+              onClick={() => navigate(-1)}
+              className="text-sm text-[#8a8175] transition-colors hover:text-[#171717]"
+            >
+              Cancel
+            </button>
 
-          <button
-            type="submit"
-            disabled={loading}
-            className="flex w-full items-center justify-center gap-2 rounded-2xl bg-violet-600 py-4 text-lg font-semibold transition hover:bg-violet-500 active:scale-[0.99] disabled:cursor-not-allowed disabled:opacity-50"
-          >
-            <CheckCircle2 size={22} />
+            <button
+              type="submit"
+              disabled={loading}
+              className="group inline-flex items-center gap-2 bg-[#171717] px-6 py-3 text-sm font-medium text-[#f7f3eb] transition-all hover:bg-[#302d29] disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              {loading ? "Creating..." : "Create poll"}
 
-            {loading ? "Creating Poll..." : "Create Poll"}
-          </button>
+              {!loading && (
+                <ArrowRight
+                  size={16}
+                  strokeWidth={1.8}
+                  className="transition-transform group-hover:translate-x-1"
+                />
+              )}
+            </button>
+          </div>
         </form>
-      </div>
-    </div>
+      </motion.div>
+    </main>
   );
-}
+};
+
+export default CreatePoll;

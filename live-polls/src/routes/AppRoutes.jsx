@@ -6,9 +6,11 @@ import Login from "../pages/Login";
 import Register from "../pages/Register";
 import Dashboard from "../pages/Dashboard";
 import ExplorePolls from "../pages/ExplorePolls";
+
 import Header from "../components/ui/Header";
 
 import ProtectedRoute from "../components/auth/ProtectedRoute";
+import PublicRoute from "../components/auth/PublicRoute";
 
 const AppRoutes = () => {
   return (
@@ -17,15 +19,29 @@ const AppRoutes = () => {
 
       <Routes>
         {/* Public */}
-        <Route path="/create-polls" element={<CreatePoll />} />
 
         <Route path="/active-polls" element={<ExplorePolls />} />
 
         <Route path="/:pollId" element={<PollDetails />} />
 
-        <Route path="/login" element={<Login />} />
+        {/* Guest-only routes */}
+        <Route
+          path="/login"
+          element={
+            <PublicRoute>
+              <Login />
+            </PublicRoute>
+          }
+        />
 
-        <Route path="/register" element={<Register />} />
+        <Route
+          path="/register"
+          element={
+            <PublicRoute>
+              <Register />
+            </PublicRoute>
+          }
+        />
 
         {/* Protected */}
         <Route
@@ -33,6 +49,15 @@ const AppRoutes = () => {
           element={
             <ProtectedRoute>
               <Dashboard />
+            </ProtectedRoute>
+          }
+        />
+
+        <Route
+          path="/create-polls"
+          element={
+            <ProtectedRoute>
+              <CreatePoll />
             </ProtectedRoute>
           }
         />

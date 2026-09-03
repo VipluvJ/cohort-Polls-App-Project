@@ -1,6 +1,5 @@
 import { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-
 import {
   AlertCircle,
   ArrowLeft,
@@ -19,38 +18,19 @@ export default function PollDetails() {
   const { pollId } = useParams();
   const navigate = useNavigate();
 
-  // =====================================================
-  // 1. POLL STATE
-  // Static information about the poll
-  // =====================================================
-
   const [poll, setPoll] = useState(null);
-
-  // =====================================================
-  // 2. RESULTS STATE
-  // Dynamic information that changes after votes
-  // =====================================================
-
   const [results, setResults] = useState(null);
-
-  // =====================================================
-  // 3. VOTING STATE
-  // =====================================================
 
   const [selectedOption, setSelectedOption] = useState(null);
   const [voting, setVoting] = useState(false);
   const [voteSuccess, setVoteSuccess] = useState(false);
 
-  // =====================================================
-  // 4. GENERAL STATE
-  // =====================================================
-
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
-  // =====================================================
-  // 5. FETCH POLL DETAILS
-  // =====================================================
+  // ------------------------------------------
+  // FETCH POLL
+  // ------------------------------------------
 
   useEffect(() => {
     const fetchPoll = async () => {
@@ -59,12 +39,6 @@ export default function PollDetails() {
         setError("");
 
         const response = await getPoll(pollId);
-
-        console.log("POLL RESPONSE:", response);
-
-        // Supports either:
-        // { success, message, data }
-        // OR direct data
         const pollData = response?.data ?? response;
 
         setPoll(pollData);
@@ -82,18 +56,14 @@ export default function PollDetails() {
     }
   }, [pollId]);
 
-  // =====================================================
-  // 6. FETCH INITIAL RESULTS
-  // This gives percentages before any socket update arrives
-  // =====================================================
+  // ------------------------------------------
+  // FETCH RESULTS
+  // ------------------------------------------
 
   useEffect(() => {
     const fetchResults = async () => {
       try {
         const response = await getPollResults(pollId);
-
-        console.log("INITIAL RESULTS:", response);
-
         const resultData = response?.data ?? response;
 
         setResults(resultData);
@@ -110,9 +80,9 @@ export default function PollDetails() {
     }
   }, [pollId]);
 
-  // =====================================================
-  // 7. SOCKET.IO LIVE RESULTS
-  // =====================================================
+  // ------------------------------------------
+  // SOCKET.IO
+  // ------------------------------------------
 
   useEffect(() => {
     if (!pollId) return;
@@ -128,41 +98,41 @@ export default function PollDetails() {
     const handlePollUpdated = (updatedResults) => {
       console.log("🔥 POLL UPDATED RECEIVED:", updatedResults);
 
-      // Only results change.
-      // Poll data stays separate.
       setResults(updatedResults);
     };
 
     socket.on("connect", joinPollRoom);
     socket.on("pollUpdated", handlePollUpdated);
 
-    // Connect if not already connected
     socket.connect();
 
-    // If socket was already connected before this page opened,
-    // the "connect" event may not fire again.
     if (socket.connected) {
       socket.emit("join-poll", pollId);
 
-      console.log("🟢 SOCKET ALREADY CONNECTED. JOINED POLL:", pollId);
+      console.log("🟢 SOCKET ALREADY CONNECTED:", pollId);
     }
 
     return () => {
       socket.off("connect", joinPollRoom);
       socket.off("pollUpdated", handlePollUpdated);
-
-      // We remove listeners, but don't disconnect the global
-      // socket instance unnecessarily.
     };
   }, [pollId]);
 
-  // =====================================================
-  // 8. SELECT OPTION
-  // =====================================================
+  // ------------------------------------------
+  // POLL STATUS
+  // ------------------------------------------
+
+  const isExpired = poll?.expiresAt && new Date(poll.expiresAt) <= new Date();
+
+  const isInactive = poll?.isActive === false;
+
+  const pollClosed = isExpired || isInactive;
+
+  // ------------------------------------------
+  // SELECT OPTION
+  // ------------------------------------------
 
   const handleOptionSelect = (optionId) => {
-    // Don't allow changing the selection while submitting,
-    // after successful voting, or when poll is closed.
     if (voting || voteSuccess || pollClosed) {
       return;
     }
@@ -171,13 +141,13 @@ export default function PollDetails() {
     setError("");
   };
 
-  // =====================================================
-  // 9. SUBMIT VOTE
-  // =====================================================
+  // ------------------------------------------
+  // SUBMIT VOTE
+  // ------------------------------------------
 
   const handleVote = async () => {
     if (!selectedOption) {
-      setError("Please select an option before voting.");
+      setError("Choose an answer first.");
       return;
     }
 
@@ -185,45 +155,16 @@ export default function PollDetails() {
       setVoting(true);
       setError("");
 
-      console.log("Submitting vote:", {
-        pollId,
-        optionId: selectedOption,
-      });
-
-      // -------------------------------------------------
-      // A. Submit vote through REST API
-      // -------------------------------------------------
-
-      const voteResponse = await voteOnPoll(pollId, selectedOption);
-
-      console.log("Vote submitted:", voteResponse);
-
-      // -------------------------------------------------
-      // B. Fetch latest results immediately
-      //
-      // Socket.IO should also send these results, but this
-      // guarantees that the voter sees the update immediately.
-      // -------------------------------------------------
+      await voteOnPoll(pollId, selectedOption);
 
       const resultsResponse = await getPollResults(pollId);
-
-      console.log("Latest results after vote:", resultsResponse);
 
       const latestResults = resultsResponse?.data ?? resultsResponse;
 
       setResults(latestResults);
-
-      // -------------------------------------------------
-      // C. Show success
-      // -------------------------------------------------
-
       setVoteSuccess(true);
     } catch (error) {
       console.error("Vote failed:", error.response?.data || error);
-
-      // -------------------------------------------------
-      // Duplicate vote
-      // -------------------------------------------------
 
       if (error.response?.status === 409) {
         setError(
@@ -231,8 +172,6 @@ export default function PollDetails() {
             "You have already voted on this poll.",
         );
 
-        // Still fetch the latest results because the user
-        // should be able to see current live percentages.
         try {
           const resultsResponse = await getPollResults(pollId);
 
@@ -252,210 +191,289 @@ export default function PollDetails() {
     }
   };
 
-  // =====================================================
-  // 10. LOADING
-  // =====================================================
+  // ------------------------------------------
+  // LOADING
+  // ------------------------------------------
 
   if (loading) {
     return (
-      <main className="flex min-h-screen items-center justify-center bg-zinc-950 px-6 text-white">
-        <div className="flex items-center gap-3 text-zinc-400">
-          <Loader2 size={22} className="animate-spin" />
+      <main className="paper-texture flex min-h-[calc(100vh-72px)] items-center justify-center px-6">
+        <div className="flex items-center gap-3 text-sm text-[var(--ink-soft)]">
+          <Loader2 size={18} className="animate-spin" />
 
-          <span>Loading poll...</span>
+          <span>Loading question...</span>
         </div>
       </main>
     );
   }
 
-  // =====================================================
-  // 11. POLL NOT FOUND / ERROR
-  // =====================================================
+  // ------------------------------------------
+  // NOT FOUND
+  // ------------------------------------------
 
   if (!poll) {
     return (
-      <main className="flex min-h-screen items-center justify-center bg-zinc-950 px-6 text-white">
-        <div className="w-full max-w-md rounded-3xl border border-zinc-800 bg-zinc-900 p-8 text-center">
-          <AlertCircle size={40} className="mx-auto text-red-400" />
+      <main className="paper-texture flex min-h-[calc(100vh-72px)] items-center justify-center px-6">
+        <div className="w-full max-w-md text-center">
+          <AlertCircle
+            size={36}
+            strokeWidth={1.4}
+            className="mx-auto text-[var(--ink-soft)]"
+          />
 
-          <h1 className="mt-4 text-xl font-semibold">Poll not found</h1>
+          <h1 className="paper-heading mt-5 text-3xl">Poll not found.</h1>
 
-          <p className="mt-2 text-sm leading-6 text-zinc-400">
-            {error || "This poll does not exist."}
+          <p className="mt-3 text-sm leading-6 text-[var(--ink-soft)]">
+            {error || "This question doesn't exist anymore."}
           </p>
 
           <button
             type="button"
-            onClick={() => navigate("/explore")}
-            className="mt-6 rounded-xl bg-white px-5 py-3 text-sm font-semibold text-black transition hover:bg-zinc-200"
+            onClick={() => navigate("/active-polls")}
+            className="
+              mt-7
+              border-b
+              border-[var(--ink)]
+              pb-1
+              text-sm
+              font-medium
+              transition
+              hover:border-[var(--accent)]
+              hover:text-[var(--accent)]
+            "
           >
-            Explore Polls
+            Explore questions →
           </button>
         </div>
       </main>
     );
   }
 
-  // =====================================================
-  // 12. POLL STATUS
-  // =====================================================
-
-  const isExpired = poll.expiresAt && new Date(poll.expiresAt) <= new Date();
-
-  const isInactive = poll.isActive === false;
-
-  const pollClosed = isExpired || isInactive;
-
-  // =====================================================
-  // 13. OPTIONS
-  //
-  // Use results.options because it contains:
-  // id, text, votes, percentage
-  //
-  // Fall back to poll.options while results load.
-  // =====================================================
+  // ------------------------------------------
+  // DATA
+  // ------------------------------------------
 
   const pollOptions = results?.options || poll.options || [];
 
   const totalVotes = results?.totalVotes ?? poll.totalVotes ?? 0;
 
-  // =====================================================
-  // 14. UI
-  // =====================================================
-
   return (
-    <main className="min-h-screen bg-zinc-950 px-4 py-8 text-white sm:px-6 sm:py-12">
-      <div className="mx-auto max-w-3xl">
-        {/* ==============================================
-            BACK BUTTON
-        ============================================== */}
+    <main className="paper-texture ink-appear">
+      <div className="mx-auto max-w-4xl px-5 py-8 sm:px-8 sm:py-14">
+        {/* BACK */}
 
         <button
           type="button"
-          onClick={() => navigate("/explore")}
-          className="mb-8 flex items-center gap-2 text-sm text-zinc-400 transition hover:text-white"
+          onClick={() => navigate("/active-polls")}
+          className="
+            group
+            mb-14
+            flex
+            items-center
+            gap-2
+            text-sm
+            text-[var(--ink-soft)]
+            transition
+            hover:text-[var(--ink)]
+          "
         >
-          <ArrowLeft size={17} />
-          Back to Explore
+          <ArrowLeft
+            size={16}
+            strokeWidth={1.7}
+            className="
+              transition
+              group-hover:-translate-x-1
+            "
+          />
+
+          <span>Back to explore</span>
         </button>
 
-        {/* ==============================================
-            POLL HEADER
-        ============================================== */}
+        {/* HEADER */}
 
-        <div className="mb-8">
-          <div className="mb-4 inline-flex items-center gap-2 rounded-full border border-violet-500/20 bg-violet-500/10 px-4 py-2 text-sm text-violet-300">
-            <Vote size={16} />
-            Live Poll
+        <header className="mb-14">
+          <div className="mb-5 flex flex-wrap items-center gap-4">
+            {!pollClosed ? (
+              <span className="flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.18em] text-[var(--success)]">
+                <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-[var(--success)]" />
+                Live poll
+              </span>
+            ) : (
+              <span className="text-[11px] font-semibold uppercase tracking-[0.18em] text-[var(--ink-faint)]">
+                Poll closed
+              </span>
+            )}
+
+            <span className="text-[var(--line-dark)]">/</span>
+
+            <span className="text-xs text-[var(--ink-faint)]">
+              {totalVotes} {totalVotes === 1 ? "response" : "responses"}
+            </span>
           </div>
 
-          <h1 className="text-3xl font-bold tracking-tight sm:text-4xl">
+          <h1
+            className="
+              paper-heading
+              max-w-3xl
+              text-5xl
+              leading-[1.02]
+              sm:text-6xl
+            "
+          >
             {poll.title}
           </h1>
 
           {poll.description && (
-            <p className="mt-4 max-w-2xl leading-relaxed text-zinc-400">
+            <p
+              className="
+                mt-7
+                max-w-2xl
+                text-base
+                leading-7
+                text-[var(--ink-soft)]
+                sm:text-lg
+              "
+            >
               {poll.description}
             </p>
           )}
-        </div>
 
-        {/* ==============================================
-            MAIN POLL CARD
-        ============================================== */}
+          {!pollClosed && (
+            <div
+              className="
+                handwritten
+                mt-5
+                -rotate-2
+                text-2xl
+                text-[var(--accent)]
+              "
+            >
+              what do you think?
+            </div>
+          )}
+        </header>
 
-        <section className="overflow-hidden rounded-3xl border border-zinc-800 bg-zinc-900 shadow-2xl">
-          {/* ============================================
-              STATUS SECTION
-          ============================================ */}
+        {/* POLL */}
 
-          <div className="border-b border-zinc-800 p-6 sm:p-8">
-            <div className="flex flex-wrap items-center justify-between gap-4">
-              {/* Status */}
-              <div className="flex flex-wrap items-center gap-3">
-                {!pollClosed ? (
-                  <span className="rounded-full border border-emerald-500/20 bg-emerald-500/10 px-3 py-1 text-xs font-medium text-emerald-400">
-                    Active
+        <section>
+          <div className="border-t border-[var(--ink)]" />
+
+          {/* STATUS */}
+
+          <div
+            className="
+              flex
+              flex-col
+              gap-4
+              border-b
+              border-[var(--line)]
+              py-5
+              sm:flex-row
+              sm:items-center
+              sm:justify-between
+            "
+          >
+            <div className="flex items-center gap-3">
+              {!pollClosed ? (
+                <>
+                  <span className="h-2 w-2 animate-pulse rounded-full bg-[var(--success)]" />
+
+                  <span className="text-xs text-[var(--ink-soft)]">
+                    Results update live
                   </span>
-                ) : (
-                  <span className="rounded-full border border-red-500/20 bg-red-500/10 px-3 py-1 text-xs font-medium text-red-400">
-                    Closed
+                </>
+              ) : (
+                <>
+                  <Clock
+                    size={15}
+                    strokeWidth={1.6}
+                    className="text-[var(--ink-soft)]"
+                  />
+
+                  <span className="text-xs text-[var(--ink-soft)]">
+                    Final results
                   </span>
-                )}
-
-                {/* Expiration */}
-                {poll.expiresAt && (
-                  <span
-                    className={`flex items-center gap-2 text-sm ${
-                      isExpired ? "text-red-400" : "text-zinc-500"
-                    }`}
-                  >
-                    <Clock size={16} />
-
-                    {isExpired
-                      ? "Poll expired"
-                      : `Ends ${new Date(poll.expiresAt).toLocaleString()}`}
-                  </span>
-                )}
-              </div>
-
-              {/* Total votes */}
-              <div className="text-right">
-                <p className="text-xs uppercase tracking-wider text-zinc-500">
-                  Total votes
-                </p>
-
-                <p className="mt-1 text-xl font-bold">{totalVotes}</p>
-              </div>
+                </>
+              )}
             </div>
 
-            {/* Closed messages */}
-
-            {isExpired && (
-              <div className="mt-5 rounded-xl border border-red-500/20 bg-red-500/10 px-4 py-3 text-sm text-red-400">
-                This poll has expired. You can still view the final results.
-              </div>
-            )}
-
-            {isInactive && !isExpired && (
-              <div className="mt-5 rounded-xl border border-red-500/20 bg-red-500/10 px-4 py-3 text-sm text-red-400">
-                This poll is no longer active. You can still view the results.
-              </div>
+            {poll.expiresAt && (
+              <span className="text-xs text-[var(--ink-faint)]">
+                {isExpired
+                  ? "Closed"
+                  : `Ends ${new Date(poll.expiresAt).toLocaleString()}`}
+              </span>
             )}
           </div>
 
-          {/* ============================================
-              VOTING / RESULTS SECTION
-          ============================================ */}
+          {/* CLOSED MESSAGE */}
 
-          <div className="p-6 sm:p-8">
-            <div className="mb-6 flex items-start justify-between gap-4">
+          {pollClosed && (
+            <div
+              className="
+                border-b
+                border-[var(--line)]
+                py-5
+                text-sm
+                text-[var(--ink-soft)]
+              "
+            >
+              {isExpired
+                ? "This poll has expired. These are the final results."
+                : "This poll is no longer active. These are the current results."}
+            </div>
+          )}
+
+          {/* ANSWERS */}
+
+          <div className="py-7">
+            <div
+              className="
+                mb-8
+                flex
+                items-end
+                justify-between
+                gap-4
+              "
+            >
               <div>
-                <h2 className="text-xl font-semibold">Choose your answer</h2>
+                <div
+                  className="
+                    text-[11px]
+                    font-semibold
+                    uppercase
+                    tracking-[0.18em]
+                    text-[var(--ink-faint)]
+                  "
+                >
+                  Your answer
+                </div>
 
-                <p className="mt-1 text-sm text-zinc-500">
-                  Select one option. Results update live as people vote.
+                <p className="mt-2 text-sm text-[var(--ink-soft)]">
+                  Choose one.
                 </p>
               </div>
 
-              {/* Live indicator */}
-
-              <div className="flex shrink-0 items-center gap-2 rounded-full border border-emerald-500/10 bg-emerald-500/5 px-3 py-1.5 text-xs text-emerald-400">
-                <span className="h-2 w-2 animate-pulse rounded-full bg-emerald-400" />
-                Live
-              </div>
+              {!voteSuccess && !pollClosed && (
+                <span
+                  className="
+                    hidden
+                    text-xs
+                    text-[var(--ink-faint)]
+                    sm:block
+                  "
+                >
+                  one response
+                </span>
+              )}
             </div>
 
-            {/* ==========================================
-                OPTIONS
-            ========================================== */}
+            {/* OPTIONS */}
 
-            <div className="space-y-3">
+            <div>
               {pollOptions.map((option, index) => {
                 const selected = selectedOption === option.id;
 
-                // Backend already calculates percentage.
-                // Convert safely to a number for CSS.
                 const percentage = Number(option.percentage) || 0;
 
                 return (
@@ -464,241 +482,368 @@ export default function PollDetails() {
                     type="button"
                     disabled={voting || voteSuccess || pollClosed}
                     onClick={() => handleOptionSelect(option.id)}
-                    className={`
+                    className="
                       group
                       relative
+                      block
                       w-full
-                      overflow-hidden
-                      rounded-2xl
-                      border
+                      border-b
+                      border-[var(--line)]
+                      py-6
                       text-left
-                      transition-all
-                      duration-200
-
-                      ${
-                        selected
-                          ? "border-violet-500"
-                          : "border-zinc-800 hover:border-zinc-600"
-                      }
-
-                      ${
-                        voting || voteSuccess || pollClosed
-                          ? "cursor-not-allowed"
-                          : "cursor-pointer"
-                      }
-                    `}
+                      transition
+                      first:border-t
+                      disabled:cursor-not-allowed
+                    "
                   >
-                    {/* ==================================
-                        ANIMATED PERCENTAGE BAR
-
-                        When `results` changes:
-
-                        40% → 45%
-
-                        React changes width and Tailwind
-                        animates it automatically.
-                    ================================== */}
+                    {/* OPTION */}
 
                     <div
                       className="
-                        absolute
-                        inset-y-0
-                        left-0
-                        bg-violet-500/15
-                        transition-all
-                        duration-700
-                        ease-out
+                        relative
+                        z-10
+                        flex
+                        items-start
+                        gap-5
                       "
-                      style={{
-                        width: `${percentage}%`,
-                      }}
-                    />
+                    >
+                      {/* NUMBER */}
 
-                    {/* ==================================
-                        OPTION CONTENT
-                    ================================== */}
+                      <span
+                        className="
+                          w-8
+                          shrink-0
+                          pt-1
+                          text-xs
+                          font-medium
+                          tabular-nums
+                          text-[var(--ink-faint)]
+                        "
+                      >
+                        {String(index + 1).padStart(2, "0")}
+                      </span>
 
-                    <div className="relative z-10 flex items-center justify-between gap-4 p-4 sm:p-5">
-                      {/* Left side */}
+                      {/* ANSWER */}
 
-                      <div className="flex min-w-0 items-center gap-4">
-                        {/* Number / selected indicator */}
-
-                        <span
-                          className={`
+                      <div className="min-w-0 flex-1">
+                        <div
+                          className="
                             flex
-                            h-9
-                            w-9
-                            shrink-0
-                            items-center
-                            justify-center
-                            rounded-full
-                            border
-                            text-sm
-                            font-medium
-                            transition
-
-                            ${
-                              selected
-                                ? "border-violet-500 bg-violet-500 text-white"
-                                : "border-zinc-700 bg-zinc-950 text-zinc-400"
-                            }
-                          `}
+                            items-start
+                            justify-between
+                            gap-5
+                          "
                         >
-                          {selected ? <Check size={17} /> : index + 1}
-                        </span>
-
-                        {/* Text */}
-
-                        <div className="min-w-0">
-                          <p className="truncate font-medium text-zinc-100">
+                          <span
+                            className={`
+                              text-base
+                              transition
+                              sm:text-lg
+                              ${
+                                selected
+                                  ? "font-semibold text-[var(--ink)]"
+                                  : "text-[var(--ink)]"
+                              }
+                            `}
+                          >
                             {option.text}
-                          </p>
+                          </span>
 
                           {results && (
-                            <p className="mt-1 text-xs text-zinc-500">
-                              {option.votes ?? 0}{" "}
-                              {(option.votes ?? 0) === 1 ? "vote" : "votes"}
-                            </p>
+                            <span
+                              className="
+                                shrink-0
+                                text-sm
+                                font-medium
+                                tabular-nums
+                                text-[var(--ink-soft)]
+                              "
+                            >
+                              {percentage}%
+                            </span>
                           )}
                         </div>
-                      </div>
 
-                      {/* Right side */}
-
-                      <div className="flex shrink-0 items-center gap-3">
-                        {/* Percentage */}
+                        {/* RESULT BAR */}
 
                         {results && (
-                          <span className="text-sm font-semibold tabular-nums text-zinc-100">
-                            {percentage}%
-                          </span>
+                          <div
+                            className="
+                              mt-4
+                              h-[3px]
+                              w-full
+                              overflow-hidden
+                              bg-[var(--paper-deep)]
+                            "
+                          >
+                            <div
+                              className="
+                                h-full
+                                origin-left
+                                bg-[var(--ink)]
+                                transition-all
+                                duration-700
+                                ease-out
+                              "
+                              style={{
+                                width: `${percentage}%`,
+                              }}
+                            />
+                          </div>
                         )}
 
-                        {/* Radio indicator */}
+                        {/* VOTE COUNT */}
 
-                        <span
-                          className={`
-                            flex
-                            h-5
-                            w-5
-                            items-center
-                            justify-center
-                            rounded-full
-                            border-2
-                            transition
-
-                            ${
-                              selected ? "border-violet-400" : "border-zinc-600"
-                            }
-                          `}
-                        >
-                          {selected && (
-                            <span className="h-2.5 w-2.5 rounded-full bg-violet-400" />
-                          )}
-                        </span>
+                        {results && (
+                          <div
+                            className="
+                              mt-2
+                              text-[11px]
+                              text-[var(--ink-faint)]
+                            "
+                          >
+                            {option.votes ?? 0}{" "}
+                            {(option.votes ?? 0) === 1 ? "vote" : "votes"}
+                          </div>
+                        )}
                       </div>
+
+                      {/* SELECTION */}
+
+                      <span
+                        className="
+                          flex
+                          h-5
+                          w-5
+                          shrink-0
+                          items-center
+                          justify-center
+                          pt-1
+                        "
+                      >
+                        {selected ? (
+                          <span
+                            className="
+                              flex
+                              h-5
+                              w-5
+                              items-center
+                              justify-center
+                              rounded-full
+                              bg-[var(--ink)]
+                              text-[var(--paper)]
+                            "
+                          >
+                            <Check size={12} strokeWidth={2.5} />
+                          </span>
+                        ) : (
+                          <span
+                            className="
+                              h-4
+                              w-4
+                              rounded-full
+                              border
+                              border-[var(--line-dark)]
+                              transition
+                              group-hover:border-[var(--ink)]
+                            "
+                          />
+                        )}
+                      </span>
                     </div>
+
+                    {/* SELECTED ACCENT */}
+
+                    {selected && (
+                      <div
+                        className="
+                          absolute
+                          bottom-0
+                          left-0
+                          h-[2px]
+                          w-16
+                          bg-[var(--accent)]
+                        "
+                      />
+                    )}
                   </button>
                 );
               })}
             </div>
 
-            {/* ==========================================
-                ERROR MESSAGE
-            ========================================== */}
+            {/* ERROR */}
 
             {error && (
-              <div className="mt-5 flex items-center gap-3 rounded-xl border border-red-500/20 bg-red-500/10 px-4 py-3 text-sm text-red-400">
-                <AlertCircle size={18} className="shrink-0" />
+              <div
+                className="
+                  mt-6
+                  flex
+                  items-start
+                  gap-3
+                  border-l-2
+                  border-red-700
+                  bg-red-50
+                  px-4
+                  py-3
+                  text-sm
+                  text-red-800
+                "
+              >
+                <AlertCircle
+                  size={17}
+                  className="mt-0.5 shrink-0"
+                  strokeWidth={1.7}
+                />
 
                 <span>{error}</span>
               </div>
             )}
 
-            {/* ==========================================
-                SUCCESS MESSAGE
-            ========================================== */}
+            {/* SUCCESS */}
 
             {voteSuccess && (
-              <div className="mt-5 flex items-center gap-3 rounded-xl border border-emerald-500/20 bg-emerald-500/10 px-4 py-4">
-                <CheckCircle2 size={20} className="shrink-0 text-emerald-400" />
+              <div
+                className="
+                  mt-8
+                  border-y
+                  border-[var(--line)]
+                  py-5
+                "
+              >
+                <div className="flex items-start gap-3">
+                  <CheckCircle2
+                    size={19}
+                    strokeWidth={1.6}
+                    className="
+                      mt-0.5
+                      shrink-0
+                      text-[var(--success)]
+                    "
+                  />
 
-                <div>
-                  <p className="font-medium text-emerald-400">
-                    Vote submitted successfully!
-                  </p>
+                  <div>
+                    <p className="text-sm font-medium">
+                      Your vote has been counted.
+                    </p>
 
-                  <p className="mt-1 text-sm text-emerald-400/70">
-                    Results will continue updating live.
-                  </p>
+                    <p
+                      className="
+                        mt-1
+                        text-xs
+                        leading-5
+                        text-[var(--ink-soft)]
+                      "
+                    >
+                      Results will continue updating as other people vote.
+                    </p>
+                  </div>
                 </div>
               </div>
             )}
 
-            {/* ==========================================
-                SUBMIT BUTTON
-            ========================================== */}
+            {/* VOTE BUTTON */}
 
-            <button
-              type="button"
-              onClick={handleVote}
-              disabled={!selectedOption || voting || voteSuccess || pollClosed}
-              className="
-                mt-6
-                flex
-                w-full
-                items-center
-                justify-center
-                gap-2
-                rounded-2xl
-                bg-violet-600
-                px-5
-                py-4
-                font-semibold
-                text-white
-                transition
-                hover:bg-violet-500
-                disabled:cursor-not-allowed
-                disabled:opacity-40
-              "
-            >
-              {voting ? (
-                <>
-                  <Loader2 size={20} className="animate-spin" />
-                  Submitting vote...
-                </>
-              ) : voteSuccess ? (
-                <>
-                  <CheckCircle2 size={20} />
-                  Vote Submitted
-                </>
-              ) : pollClosed ? (
-                <>
-                  <Clock size={20} />
-                  Poll Closed
-                </>
-              ) : (
-                <>
-                  <Vote size={20} />
-                  Submit Vote
-                </>
-              )}
-            </button>
+            {!pollClosed && !voteSuccess && (
+              <div
+                className="
+                  mt-8
+                  flex
+                  flex-col
+                  items-start
+                  gap-3
+                  sm:flex-row
+                  sm:items-center
+                "
+              >
+                <button
+                  type="button"
+                  onClick={handleVote}
+                  disabled={!selectedOption || voting}
+                  className="
+                    group
+                    flex
+                    items-center
+                    gap-3
+                    border-b-2
+                    border-[var(--ink)]
+                    pb-2
+                    text-sm
+                    font-semibold
+                    transition
+                    hover:border-[var(--accent)]
+                    hover:text-[var(--accent)]
+                    disabled:cursor-not-allowed
+                    disabled:opacity-30
+                  "
+                >
+                  {voting ? (
+                    <>
+                      <Loader2 size={16} className="animate-spin" />
+
+                      <span>Counting your vote...</span>
+                    </>
+                  ) : (
+                    <>
+                      <span>Submit vote</span>
+
+                      <Vote
+                        size={16}
+                        strokeWidth={1.7}
+                        className="
+                          transition
+                          group-hover:translate-x-1
+                        "
+                      />
+                    </>
+                  )}
+                </button>
+
+                <span
+                  className="
+                    text-xs
+                    text-[var(--ink-faint)]
+                  "
+                >
+                  You can change your answer before submitting.
+                </span>
+              </div>
+            )}
           </div>
 
-          {/* ============================================
-              FOOTER
-          ============================================ */}
+          {/* FOOTER */}
 
-          <div className="border-t border-zinc-800 bg-zinc-950/30 px-6 py-4 sm:px-8">
-            <div className="flex flex-wrap items-center justify-between gap-3 text-xs text-zinc-500">
-              <span>One vote allowed per anonymous browser session.</span>
+          <div
+            className="
+              border-t
+              border-[var(--line)]
+              py-5
+            "
+          >
+            <div
+              className="
+                flex
+                flex-col
+                gap-2
+                text-[11px]
+                text-[var(--ink-faint)]
+                sm:flex-row
+                sm:items-center
+                sm:justify-between
+              "
+            >
+              <span>One vote per anonymous browser session.</span>
 
-              <span className="flex items-center gap-2">
-                <span className="h-2 w-2 animate-pulse rounded-full bg-emerald-500" />
-                Live results enabled
-              </span>
+              {!pollClosed && (
+                <span
+                  className="
+                    handwritten
+                    text-lg
+                    text-[var(--ink-soft)]
+                  "
+                >
+                  watching the ink move ✎
+                </span>
+              )}
             </div>
           </div>
         </section>
